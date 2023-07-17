@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Button,
   FlatList,
+  RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
@@ -26,16 +27,25 @@ const Posts: React.FC<PostsProps> = ({ }) => {
   const [body, setBody] = useState("");
   const [userId, setUserId] = useState("");
   const [postItem, setPostItem] = useState<any>({})
+  const [postsData,setPostData]=useState<Array<PostModel>>([])
+  const [refreshing,setRefreshing] = useState(false)
   const [indexPost, setIndexPost] = useState(-1);
   const checkItem = JSON.stringify(postItem) === "{}"
   useEffect(() => {
     getPosts();
   }, []);
 
+  useEffect(() => {
+    setPostData(posts)
+  }, [posts])
+
   //apis...
   const getPosts = async () => {
+    setRefreshing(true)
     const { data, status } = await api.posts.getPosts();
     dispatch(addStoreInfo(data));
+    setRefreshing(false)
+
   };
 
   //functions
@@ -86,6 +96,7 @@ const Posts: React.FC<PostsProps> = ({ }) => {
 
       return;
     }
+    setRefreshing(true)
 
     const data = [...posts, {
       id: Number(id),
@@ -99,10 +110,14 @@ const Posts: React.FC<PostsProps> = ({ }) => {
       duration: Snackbar.LENGTH_SHORT,
     });
     onModalToggle()
+    setRefreshing(false)
+
   }
   // console.log(posts.length, "on Add presss")
 
   const onSubmitPress = () => {
+    setRefreshing(true)
+
     let newArray = [...posts]
     newArray[indexPost] = {
       id: Number(id),
@@ -117,6 +132,8 @@ const Posts: React.FC<PostsProps> = ({ }) => {
       duration: Snackbar.LENGTH_SHORT,
     });
     onModalToggle()
+    setRefreshing(false)
+
   }
   const renderPosts = ({ item, index }: { item: PostModel; index: number }) => {
     const onEditPress = (itemData: PostModel, indexData: number) => {
@@ -130,8 +147,11 @@ const Posts: React.FC<PostsProps> = ({ }) => {
     };
 
     const onDeletePress = (indexData: number) => {
+      setRefreshing(true)
       const filterData = posts.filter((item: PostModel, index: number) => index !== indexData);
       dispatch(addStoreInfo(filterData));
+      setRefreshing(false)
+
     };
     return (
       <PostsCard
@@ -145,15 +165,20 @@ const Posts: React.FC<PostsProps> = ({ }) => {
   return (
     <View style={styles.container}>
       <FlatList
-        data={posts}
+        data={postsData}
         renderItem={renderPosts}
         keyExtractor={(item, index) => index.toString()}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={getPosts} />
+        }
       />
-      <Button title="Add Post" onPress={onAddPostPress} />
+      <View style={{padding:10}}>
+      <Button  title="Add Post" onPress={onAddPostPress} />
+      </View>
       <PopUp
         onModalToggle={onModalToggle}
         visible={isVisible}
-        header={checkItem?"Add Post":'Edit Post'}
+        header={checkItem ? "Add Post" : 'Edit Post'}
       >
         <View style={{ padding: 20 }}>
           <Input
@@ -180,7 +205,7 @@ const Posts: React.FC<PostsProps> = ({ }) => {
             value={body}
             onChangeText={setBody}
           />
-          <Button title={checkItem ? "Submit Post" : "Submit"} onPress={checkItem ? onAddItemPress : onSubmitPress} />
+          <Button  title={checkItem ? "Submit Post" : "Submit"} onPress={checkItem ? onAddItemPress : onSubmitPress} />
         </View>
       </PopUp>
     </View>
